@@ -29,6 +29,7 @@ const WEEKDAY_LABELS: Record<string, string[]> = {
   sr: ['Pon', 'Uto', 'Sre', 'Čet', 'Pet', 'Sub', 'Ned'],
   en: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
 };
+const FLOW_VALUES = ['spotting', 'light', 'medium', 'heavy'] as const;
 const FLOW_EMOJI: Record<string, string> = {
   spotting: '🩸',
   light: '💧',
