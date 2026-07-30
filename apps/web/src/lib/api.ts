@@ -1,10 +1,5 @@
 
-function getApiUrl() {
-  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
-  if (typeof window !== 'undefined') return '/api/v1';
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}/api/v1`;
-  return 'http://localhost:3001/api/v1';
-}
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
 type RequestOptions = RequestInit & { token?: string | null };
 
@@ -13,7 +8,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   headers.set('Content-Type', 'application/json');
   if (options.token) headers.set('Authorization', `Bearer ${options.token}`);
 
-  const res = await fetch(`${getApiUrl()}${path}`, {
+  const res = await fetch(`${API_URL}${path}`, {
     ...options,
     headers,
     credentials: 'include',

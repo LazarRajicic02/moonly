@@ -1,81 +1,104 @@
 # Deployment guide
 
-## Vercel (frontend + API — recommended)
+Luna runs on two platforms:
 
-Everything runs on one Vercel project: Next.js serves the UI, NestJS runs as a serverless function at `/api/v1/*`.
+| App | Platform | URL |
+|-----|----------|-----|
+| **Web** (`apps/web`) | [Vercel](https://vercel.com) | `https://your-app.vercel.app` |
+| **API** (`apps/api`) | [Render](https://render.com) | `https://luna-api-xxxx.onrender.com` |
 
-```
-https://your-app.vercel.app/          → Next.js (web)
-https://your-app.vercel.app/api/v1/*  → NestJS (API)
-https://your-app.vercel.app/api/docs  → Swagger
-```
+---
 
-### Setup
+## 1. Deploy API on Render
 
-1. [Vercel Dashboard](https://vercel.com) → **Add New Project** → import `LazarRajicic02/moonly`.
-2. **Root Directory:** `apps/web` (recommended)  
-   — or leave repo root; both `vercel.json` files are configured.
-3. **Environment variables** (Project → Settings → Environment Variables):
+### Blueprint (recommended)
 
-| Variable | Required | Notes |
-|----------|----------|-------|
-| `DATABASE_URL` | Yes | [Vercel Postgres](https://vercel.com/storage/postgres), [Neon](https://neon.tech), or Supabase |
-| `REDIS_URL` | Yes | [Upstash Redis](https://upstash.com) (serverless-friendly) |
-| `JWT_ACCESS_SECRET` | Yes | Random string ≥ 32 characters |
-| `JWT_REFRESH_SECRET` | Yes | Random string ≥ 32 characters |
-| `CORS_ORIGINS` | Optional | Defaults work for same-origin; set your Vercel URL if needed |
-| `WEB_URL` | Optional | `https://your-app.vercel.app` |
-| `NEXT_PUBLIC_API_URL` | Optional | Leave empty — client uses `/api/v1` on same domain |
+1. [Render Dashboard](https://dashboard.render.com) → **New** → **Blueprint**.
+2. Connect repo `LazarRajicic02/moonly` and apply `render.yaml`.
+3. Render creates **Postgres**, **Redis**, and **luna-api** (Docker).
+4. When deploy finishes, copy the API URL (e.g. `https://luna-api-xxxx.onrender.com`).
 
-4. Deploy. Build runs `pnpm vercel-build`:
-   - builds shared + API packages
-   - runs `prisma migrate deploy`
-   - builds Next.js
+### Manual
 
-### Verify
+- **New → Web Service** → Docker
+- **Dockerfile:** `apps/api/Dockerfile`
+- **Root directory:** `.` (repo root)
+- Add Postgres + Redis; set env vars below.
+
+### Render env vars (API)
+
+| Variable | Value |
+|----------|-------|
+| `DATABASE_URL` | From Render Postgres (auto via blueprint) |
+| `REDIS_URL` | From Render Redis (auto via blueprint) |
+| `JWT_ACCESS_SECRET` | Random string ≥ 32 chars (auto-generated in blueprint) |
+| `JWT_REFRESH_SECRET` | Random string ≥ 32 chars (auto-generated in blueprint) |
+| `WEB_URL` | Your Vercel URL, e.g. `https://moonly.vercel.app` |
+| `CORS_ORIGINS` | Same Vercel URL (no trailing slash) |
+| `API_URL` | Your Render API URL, e.g. `https://luna-api-xxxx.onrender.com` |
+
+Render sets `PORT` automatically. Migrations run on container start (`prisma migrate deploy`).
+
+### Verify API
 
 ```bash
-curl https://your-app.vercel.app/api/v1/health
+curl https://luna-api-xxxx.onrender.com/api/v1/health
 ```
 
-### Limitations on Vercel serverless
-
-- **Background jobs** (BullMQ medication reminders, GDPR export) do not run continuously — use [Vercel Cron](https://vercel.com/docs/cron-jobs) or Upstash QStash later if needed.
-- **Cold starts** — first API request after idle may take a few seconds (Render free tier had the same issue).
-- **Redis** must be external (Upstash); no in-container Redis.
+Swagger: `https://luna-api-xxxx.onrender.com/api/docs`
 
 ---
 
-## Render (API only — alternative)
+## 2. Deploy Web on Vercel
 
-If you prefer a always-on Docker API instead of serverless, use `render.yaml` (Postgres + Redis + API container). Point Vercel `NEXT_PUBLIC_API_URL` to the Render URL.
+1. [Vercel Dashboard](https://vercel.com) → **Add New Project** → import `LazarRajicic02/moonly`.
+2. **Root Directory:** `apps/web` (uses `apps/web/vercel.json`).
+3. **Environment variables:**
 
-See sections below for Render blueprint steps.
+| Variable | Value |
+|----------|-------|
+| `NEXT_PUBLIC_API_URL` | `https://luna-api-xxxx.onrender.com/api/v1` |
+| `NEXT_PUBLIC_APP_URL` | `https://your-app.vercel.app` |
+
+4. Deploy. Build command: `pnpm turbo run build --filter=@luna/web` (via monorepo install from repo root).
+
+> If Vercel project root is the **repo root** instead of `apps/web`, the root `vercel.json` applies — same web-only build, no API on Vercel.
 
 ---
 
-## Render blueprint (API + DB)
+## 3. Connect frontend ↔ API
 
-1. [Render Dashboard](https://dashboard.render.com) → **New** → **Blueprint** → connect repo.
-2. Apply `render.yaml` (Postgres, Redis, Docker API).
-3. Set `WEB_URL` and `CORS_ORIGINS` to your Vercel URL.
-4. On Vercel set `NEXT_PUBLIC_API_URL=https://luna-api-xxxx.onrender.com/api/v1`.
+1. Deploy Render API first → copy URL.
+2. Set `NEXT_PUBLIC_API_URL` on Vercel → redeploy web.
+3. Set `WEB_URL` and `CORS_ORIGINS` on Render to your Vercel URL → redeploy API.
+4. Open Vercel URL and log in.
+
+---
+
+## 4. Seed demo data (optional)
+
+With production `DATABASE_URL` in your shell:
+
+```bash
+pnpm --filter @luna/api exec prisma db seed
+```
+
+Demo: `demo@luna.health` / `Password123!`
 
 ---
 
 ## Local development
 
-Unchanged — API on `:3001`, web on `:3000`:
-
 ```bash
+cp .env.example .env
 docker compose up -d postgres redis
 pnpm install
 pnpm --filter @luna/shared build
 pnpm --filter @luna/api prisma:generate
 pnpm --filter @luna/api exec prisma migrate deploy
 pnpm db:seed   # optional
-pnpm --filter @luna/api dev   # terminal 1
-pnpm --filter @luna/web dev   # terminal 2
+pnpm --filter @luna/api dev   # :3001
+pnpm --filter @luna/web dev   # :3000
 ```
 
 ---
@@ -84,10 +107,8 @@ pnpm --filter @luna/web dev   # terminal 2
 
 | Issue | Fix |
 |-------|-----|
-| API 500 on Vercel | Check `DATABASE_URL`, `REDIS_URL`, JWT secrets in env vars |
-| Build fails on Prisma | `vercel-build` runs `prisma generate` + `migrate deploy` |
-| CORS errors | Set `CORS_ORIGINS=https://your-app.vercel.app` |
-| 401 after deploy | Log in again (tokens are not shared across domains) |
-| Missing translations | Ensure `en.json` matches `sr.json` structure |
-
-Demo user (after seed): `demo@luna.health` / `Password123!`
+| Vercel build fails (Prisma/types) | Vercel builds **web only** — API is on Render |
+| CORS error in browser | Set `CORS_ORIGINS` on Render to exact Vercel URL |
+| API 401 | Log in again after deploy (tokens are per-domain) |
+| Render sleeps (free tier) | First request after idle ~30s |
+| `MISSING_MESSAGE` build error | Keep `en.json` in sync with `sr.json` |

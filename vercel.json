@@ -1,17 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "pnpm install",
-  "buildCommand": "pnpm vercel-build",
-  "rewrites": [
-    { "source": "/api/v1/(.*)", "destination": "/api/server" },
-    { "source": "/api/docs", "destination": "/api/server" },
-    { "source": "/api/docs/(.*)", "destination": "/api/server" }
-  ],
-  "functions": {
-    "api/server.ts": {
-      "maxDuration": 60,
-      "memory": 1024,
-      "includeFiles": "apps/api/dist/**,apps/api/prisma/**"
-    }
-  }
+  "buildCommand": "pnpm --filter @luna/shared build && pnpm turbo run build --filter=@luna/web"
 }

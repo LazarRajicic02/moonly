@@ -1,6 +1,5 @@
-# Render Blueprint — Luna API + Postgres + Redis
+# Render Blueprint — API only (web deploys on Vercel)
 # Dashboard: New → Blueprint → connect github.com/LazarRajicic02/moonly
-# After deploy, set CORS_ORIGINS and WEB_URL to your Vercel URL.
 
 databases:
   - name: luna-db
@@ -42,9 +41,3 @@ services:
         sync: false
       - key: CORS_ORIGINS
         sync: false
-      # RENDER_EXTERNAL_URL is injected automatically; optional alias:
-      - key: API_URL
-        fromService:
-          type: web
-          name: luna-api
-          property: host
