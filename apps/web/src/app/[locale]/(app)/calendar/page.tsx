@@ -25,7 +25,10 @@ import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
-const FLOW_VALUES = ['spotting', 'light', 'medium', 'heavy'] as const;
+const WEEKDAY_LABELS: Record<string, string[]> = {
+  sr: ['Pon', 'Uto', 'Sre', 'Čet', 'Pet', 'Sub', 'Ned'],
+  en: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+};
 const FLOW_EMOJI: Record<string, string> = {
   spotting: '🩸',
   light: '💧',
@@ -169,7 +172,7 @@ export default function CalendarPage() {
     month: 'long',
     year: 'numeric',
   });
-  const weekdays = t.raw('weekdays') as string[];
+  const weekdays = WEEKDAY_LABELS[locale] ?? WEEKDAY_LABELS.en!;
 
   return (
     <main className="space-y-5">
