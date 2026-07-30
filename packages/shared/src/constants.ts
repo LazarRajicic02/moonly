@@ -1,6 +1,6 @@
 export const LOCALES = ['en', 'sr'] as const;
 export type Locale = (typeof LOCALES)[number];
-export const DEFAULT_LOCALE: Locale = 'en';
+export const DEFAULT_LOCALE: Locale = 'sr';
 
 export const USER_ROLES = ['USER', 'ADMIN'] as const;
 export type UserRole = (typeof USER_ROLES)[number];
