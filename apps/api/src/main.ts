@@ -43,8 +43,8 @@ async function bootstrap() {
     .build();
   SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, swagger));
 
-  const port = config.get<number>('API_PORT', 3001);
-  await app.listen(port);
+  const port = config.get<number>('API_PORT') ?? (process.env.PORT ? Number(process.env.PORT) : 3001);
+  await app.listen(port, '0.0.0.0');
   // eslint-disable-next-line no-console
   console.log(`Luna API listening on :${port}`);
 }

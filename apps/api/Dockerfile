@@ -3,25 +3,36 @@ RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 WORKDIR /app
 
 FROM base AS deps
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
-COPY packages ./packages
-COPY apps/api/package.json ./apps/api/package.json
-RUN pnpm install --frozen-lockfile || pnpm install
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/tsconfig/package.json ./packages/tsconfig/
+COPY packages/eslint-config/package.json ./packages/eslint-config/
+COPY apps/api/package.json ./apps/api/
+RUN pnpm install --frozen-lockfile
 
 FROM base AS build
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
-COPY --from=deps /app/packages ./packages
+COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
 COPY . .
-RUN pnpm --filter @luna/shared build && pnpm --filter @luna/api prisma:generate && pnpm --filter @luna/api build
+RUN pnpm --filter @luna/shared build \
+  && pnpm --filter @luna/api prisma:generate \
+  && pnpm --filter @luna/api build
 
 FROM node:20-alpine AS runner
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=build /app/apps/api/dist ./dist
-COPY --from=build /app/apps/api/package.json ./package.json
-COPY --from=build /app/apps/api/prisma ./prisma
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/apps/api/node_modules ./node_modules_local
+
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY apps/api/package.json ./apps/api/
+COPY packages/shared/package.json ./packages/shared/
+COPY --from=build /app/apps/api/dist ./apps/api/dist
+COPY --from=build /app/apps/api/prisma ./apps/api/prisma
+COPY --from=build /app/packages/shared/dist ./packages/shared/dist
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
+
+WORKDIR /app/apps/api
 EXPOSE 3001
-CMD ["node", "dist/main.js"]
+CMD ["pnpm", "start:prod"]
