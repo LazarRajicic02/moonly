@@ -284,7 +284,7 @@ export default function LogPage() {
           onChange={(e) => setNote(e.target.value)}
           placeholder={t('diaryPlaceholder')}
           rows={3}
-          className="mt-3 w-full rounded-xl border border-white/10 bg-ink-soft/80 px-3 py-2 text-sm text-lunar-bright placeholder:text-lunar-dim focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide"
+          className="mt-3 w-full rounded-xl border border-white/10 bg-ink-soft/80 px-3 py-2 text-base text-lunar-bright placeholder:text-lunar-dim focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide"
         />
         <Button
           className="mt-3 w-full"

@@ -32,7 +32,7 @@ export default function LoginPage() {
   });
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-luna-hero px-4">
+    <main className="flex min-h-dvh items-center justify-center bg-luna-hero px-4 pb-safe">
       <form onSubmit={onSubmit} className="w-full max-w-md space-y-4 rounded-2xl border border-white/10 bg-ink-soft/70 p-8">
         <h1 className="font-display text-3xl text-lunar-bright">{t('loginTitle')}</h1>
         <div className="space-y-2">
