@@ -15,7 +15,8 @@
     "db:generate": "pnpm --filter @luna/api prisma:generate",
     "db:migrate": "pnpm --filter @luna/api prisma:migrate",
     "db:seed": "pnpm --filter @luna/api prisma:seed",
-    "db:studio": "pnpm --filter @luna/api prisma:studio"
+    "db:studio": "pnpm --filter @luna/api prisma:studio",
+    "vercel-build": "pnpm --filter @luna/shared build && pnpm --filter @luna/api prisma:generate && pnpm --filter @luna/api build && pnpm --filter @luna/api exec prisma migrate deploy && pnpm turbo run build --filter=@luna/web"
   },
   "devDependencies": {
     "prettier": "^3.4.2",
