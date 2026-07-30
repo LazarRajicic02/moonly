@@ -1,0 +1,516 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum SubscriptionStatus {
+  NONE
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+enum FlowLevel {
+  spotting
+  light
+  medium
+  heavy
+}
+
+enum SymptomType {
+  cramps
+  headache
+  bloating
+  fatigue
+  breast_tenderness
+  acne
+  backache
+  nausea
+  cravings
+  insomnia
+  spotting
+  other
+}
+
+enum MoodType {
+  happy
+  calm
+  anxious
+  irritable
+  sad
+  energetic
+  low_energy
+  stressed
+  neutral
+}
+
+enum FertilitySignType {
+  bbt
+  cervical_mucus
+  opk
+  other
+}
+
+enum IntimacyLocation {
+  home
+  partner
+  hotel
+  auto
+  outdoors
+  other
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  EXPORT
+  ACCOUNT_DELETE
+  ADMIN_VIEW
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  displayName  String
+  role         Role      @default(USER)
+  locale       String    @default("en")
+  timezone     String    @default("UTC")
+  deletedAt    DateTime?
+  anonymizedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  profile                 UserProfile?
+  refreshTokens           RefreshToken[]
+  consents                Consent[]
+  auditLogs               AuditLog[]
+  cycles                  Cycle[]
+  periodDays              PeriodDay[]
+  cyclePredictions        CyclePrediction[]
+  symptomLogs             SymptomLog[]
+  moodLogs                MoodLog[]
+  weightLogs              WeightLog[]
+  sleepLogs               SleepLog[]
+  waterLogs               WaterLog[]
+  notes                   Note[]
+  pregnancyProfile        PregnancyProfile?
+  fertilitySigns          FertilitySign[]
+  medications             Medication[]
+  devicePushTokens        DevicePushToken[]
+  notificationPreference  NotificationPreference?
+  doctorReports           DoctorReport[]
+  subscription            Subscription?
+  aiConversations         AiConversation[]
+  intimacyLogs            IntimacyLog[]
+
+  @@index([createdAt])
+  @@index([deletedAt])
+}
+
+model UserProfile {
+  id              String    @id @default(uuid())
+  userId          String    @unique
+  dateOfBirth     DateTime?
+  averageCycleLen Int       @default(28)
+  averagePeriodLen Int      @default(5)
+  goals           String[]  @default([])
+  heightCm        Float?
+  theme           String    @default("system")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  familyId  String
+  expiresAt DateTime
+  revokedAt DateTime?
+  replacedBy String?
+  userAgent String?
+  ip        String?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+}
+
+model Consent {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String
+  granted   Boolean
+  version   String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+}
+
+model AuditLog {
+  id         String      @id @default(uuid())
+  userId     String?
+  action     AuditAction
+  resource   String
+  resourceId String?
+  metadata   Json?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime    @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([resource, createdAt])
+}
+
+model Cycle {
+  id        String    @id @default(uuid())
+  userId    String
+  startDate DateTime  @db.Date
+  endDate   DateTime? @db.Date
+  length    Int?
+  notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periodDays PeriodDay[]
+
+  @@index([userId, startDate])
+}
+
+model PeriodDay {
+  id        String    @id @default(uuid())
+  userId    String
+  cycleId   String?
+  date      DateTime  @db.Date
+  flow      FlowLevel @default(medium)
+  notes     String?
+  createdAt DateTime  @default(now())
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cycle Cycle? @relation(fields: [cycleId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model CyclePrediction {
+  id               String   @id @default(uuid())
+  userId           String
+  nextPeriodStart  DateTime @db.Date
+  fertileStart     DateTime @db.Date
+  fertileEnd       DateTime @db.Date
+  ovulationDate    DateTime @db.Date
+  avgCycleLength   Int
+  avgPeriodLength  Int
+  basedOnCycles    Int
+  computedAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, computedAt])
+}
+
+model SymptomLog {
+  id        String      @id @default(uuid())
+  userId    String
+  date      DateTime    @db.Date
+  type      SymptomType
+  severity  Int         @default(3)
+  notes     String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+}
+
+model MoodLog {
+  id        String   @id @default(uuid())
+  userId    String
+  date      DateTime @db.Date
+  mood      MoodType
+  intensity Int      @default(3)
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+}
+
+model WeightLog {
+  id        String   @id @default(uuid())
+  userId    String
+  date      DateTime @db.Date
+  kg        Float
+  notes     String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model SleepLog {
+  id        String   @id @default(uuid())
+  userId    String
+  date      DateTime @db.Date
+  hours     Float
+  quality   Int?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model WaterLog {
+  id        String   @id @default(uuid())
+  userId    String
+  date      DateTime @db.Date
+  ml        Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model Note {
+  id        String   @id @default(uuid())
+  userId    String
+  date      DateTime @db.Date
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+}
+
+model PregnancyProfile {
+  id             String    @id @default(uuid())
+  userId         String    @unique
+  dueDate        DateTime? @db.Date
+  lmpDate        DateTime? @db.Date
+  active         Boolean   @default(true)
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  checkIns PregnancyCheckIn[]
+}
+
+model PregnancyCheckIn {
+  id         String   @id @default(uuid())
+  profileId  String
+  date       DateTime @db.Date
+  week       Int?
+  weightKg   Float?
+  notes      String?
+  symptoms   String[] @default([])
+  createdAt  DateTime @default(now())
+
+  profile PregnancyProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, date])
+}
+
+model FertilitySign {
+  id        String             @id @default(uuid())
+  userId    String
+  date      DateTime           @db.Date
+  type      FertilitySignType
+  value     String
+  notes     String?
+  createdAt DateTime           @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+}
+
+model Medication {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String
+  dosage    String?
+  notes     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schedules MedicationSchedule[]
+  doses     MedicationDose[]
+
+  @@index([userId, active])
+}
+
+model MedicationSchedule {
+  id           String   @id @default(uuid())
+  medicationId String
+  timeOfDay    String
+  timezone     String   @default("UTC")
+  daysOfWeek   Int[]    @default([0, 1, 2, 3, 4, 5, 6])
+  enabled      Boolean  @default(true)
+  jobId        String?
+  createdAt    DateTime @default(now())
+
+  medication Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+
+  @@index([medicationId])
+}
+
+model MedicationDose {
+  id           String    @id @default(uuid())
+  medicationId String
+  scheduledAt  DateTime
+  takenAt      DateTime?
+  skipped      Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+
+  medication Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+
+  @@index([medicationId, scheduledAt])
+}
+
+model DevicePushToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  platform  String   @default("web")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model NotificationPreference {
+  id               String  @id @default(uuid())
+  userId           String  @unique
+  pushEnabled      Boolean @default(true)
+  emailEnabled     Boolean @default(true)
+  medicationRemind Boolean @default(true)
+  cycleReminders   Boolean @default(true)
+  marketing        Boolean @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model DoctorReport {
+  id          String   @id @default(uuid())
+  userId      String
+  title       String
+  fromDate    DateTime @db.Date
+  toDate      DateTime @db.Date
+  status      String   @default("pending")
+  storagePath String?
+  error       String?
+  createdAt   DateTime @default(now())
+  completedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model Subscription {
+  id                   String             @id @default(uuid())
+  userId               String             @unique
+  status               SubscriptionStatus @default(NONE)
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  stripePriceId        String?
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AiConversation {
+  id        String      @id @default(uuid())
+  userId    String
+  title     String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages AiMessage[]
+
+  @@index([userId, updatedAt])
+}
+
+model AiMessage {
+  id             String   @id @default(uuid())
+  conversationId String
+  role           String
+  content        String
+  createdAt      DateTime @default(now())
+
+  conversation AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+model IntimacyLog {
+  id        String            @id @default(uuid())
+  userId    String
+  date      DateTime          @db.Date
+  protected Boolean?
+  rating    Int?
+  location  IntimacyLocation?
+  notes     String?
+  createdAt DateTime          @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+}
+
+model GdprExportJob {
+  id          String    @id @default(uuid())
+  userId      String
+  status      String    @default("pending")
+  storagePath String?
+  error       String?
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@index([userId, createdAt])
+}

@@ -1,0 +1,10 @@
+{
+  "name": "Luna",
+  "short_name": "Luna",
+  "description": "Women's health companion",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B1220",
+  "theme_color": "#0B1220",
+  "icons": [{ "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
